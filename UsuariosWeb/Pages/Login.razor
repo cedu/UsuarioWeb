@@ -1,0 +1,100 @@
+﻿@* rota inicial do projeto *@
+@page "/"
+
+@using Newtonsoft.Json
+@using UsuariosWeb.Dtos
+@using UsuariosWeb.Helpers
+@using UsuariosWeb.Models
+
+@* Injeções de dependência *@
+@inject HttpClient Http
+@inject UsuarioHelper UsuarioHelper
+
+<div class="card m-3">
+    <div class="card-body">
+
+        <h4>Autenticação de usuários</h4>
+        <p>Entre com as suas credenciais de acesso.</p>
+
+        <div class="mb-3">
+            <h5 class="text-success">@mensagemSucesso</h5>
+            <h5 class="text-danger">@mensagemErro</h5>
+        </div>
+
+        @* Formulário *@
+        <EditForm Model="@model" OnValidSubmit="@OnSubmit">
+
+            @* Ativar as validações do DataAnnotations *@
+            <DataAnnotationsValidator/>
+
+            <div class="mb-3">
+                <label>Email de acesso:</label>
+                <InputText class="form-control" @bind-Value="model.Email" />
+                <span class="text-danger">
+                    <ValidationMessage For="@(() => model.Email)"/>
+                </span>
+            </div>
+
+            <div class="mb-3">
+                <label>Senha de acesso:</label>
+                <InputText type="password" class="form-control" @bind-Value="model.Senha" />
+                <span class="text-danger">
+                    <ValidationMessage For="@(() => model.Senha)" />
+                </span>
+            </div>
+
+            <div class="mb-3 d-grid">
+                <input type="submit" class="btn btn-primary" value="Acessar Sistema"/>
+            </div>
+
+        </EditForm>
+
+    </div>
+</div>
+
+@* código do componente *@
+@code {
+
+    //modelo de dados da página
+    private LoginViewModel model = new LoginViewModel();
+
+    //atributos
+    private string? mensagemSucesso;
+    private string? mensagemErro;
+
+    //função para capturar o evento de SUBMIT do formulário
+    protected async Task OnSubmit()
+    {
+        try
+        {
+            mensagemSucesso = string.Empty;
+            mensagemErro = string.Empty;
+
+            var response = await Http.PostAsJsonAsync("api/usuarios/autenticar", model);
+            var content = await response.Content.ReadAsStringAsync();
+
+
+
+            if (response.IsSuccessStatusCode)
+            {
+                var usuario = JsonConvert.DeserializeObject<UsuarioDto>(content);
+
+                await UsuarioHelper.SignIn(usuario);
+
+                mensagemSucesso = "Usuário autenticado com sucesso.";
+                model = new LoginViewModel();
+            }
+            else
+            {
+                var error = JsonConvert.DeserializeObject<ErrorViewModel>(content);
+
+                mensagemErro = error.Message; 
+
+            }
+        }
+        catch(Exception e)
+        {
+            mensagemErro = e.Message;
+        }
+    }
+}
